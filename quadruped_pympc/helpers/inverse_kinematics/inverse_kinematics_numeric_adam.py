@@ -18,11 +18,11 @@ from adam import Representations
 from adam.casadi import KinDynComputations
 from liecasadi import SO3
 
-import gym_quadruped
+import MujocoSim_quadruped
 import os
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
-gym_quadruped_path = os.path.dirname(gym_quadruped.__file__)
+MujocoSim_quadruped_path = os.path.dirname(MujocoSim_quadruped.__file__)
 
 
 from quadruped_pympc import config as cfg
@@ -39,23 +39,23 @@ class InverseKinematicsNumeric:
         """
 
         if cfg.robot == 'go2':
-            urdf_filename = gym_quadruped_path + '/robot_model/go2/go2.urdf'
-            xml_filename = gym_quadruped_path + '/robot_model/go2/go2.xml'
+            urdf_filename = MujocoSim_quadruped_path + '/robot_model/go2/go2.urdf'
+            xml_filename = MujocoSim_quadruped_path + '/robot_model/go2/go2.xml'
         if cfg.robot == 'go1':
-            urdf_filename = gym_quadruped_path + '/robot_model/go1/go1.urdf'
-            xml_filename = gym_quadruped_path + '/robot_model/go1/go1.xml'
+            urdf_filename = MujocoSim_quadruped_path + '/robot_model/go1/go1.urdf'
+            xml_filename = MujocoSim_quadruped_path + '/robot_model/go1/go1.xml'
         elif cfg.robot == 'aliengo':
-            urdf_filename = gym_quadruped_path + '/robot_model/aliengo/aliengo.urdf'
-            xml_filename = gym_quadruped_path + '/robot_model/aliengo/aliengo.xml'
+            urdf_filename = MujocoSim_quadruped_path + '/robot_model/aliengo/aliengo.urdf'
+            xml_filename = MujocoSim_quadruped_path + '/robot_model/aliengo/aliengo.xml'
         elif cfg.robot == 'b2':
-            urdf_filename = gym_quadruped_path + '/robot_model/b2/b2.urdf'
-            xml_filename = gym_quadruped_path + '/robot_model/b2/b2.xml'
+            urdf_filename = MujocoSim_quadruped_path + '/robot_model/b2/b2.urdf'
+            xml_filename = MujocoSim_quadruped_path + '/robot_model/b2/b2.xml'
         elif cfg.robot == 'hyqreal':
-            urdf_filename = gym_quadruped_path + '/robot_model/hyqreal/hyqreal.urdf'
-            xml_filename = gym_quadruped_path + '/robot_model/hyqreal/hyqreal.xml'
+            urdf_filename = MujocoSim_quadruped_path + '/robot_model/hyqreal/hyqreal.urdf'
+            xml_filename = MujocoSim_quadruped_path + '/robot_model/hyqreal/hyqreal.xml'
         elif cfg.robot == 'mini_cheetah':
-            urdf_filename = gym_quadruped_path + '/robot_model/mini_cheetah/mini_cheetah.urdf'
-            xml_filename = gym_quadruped_path + '/robot_model/mini_cheetah/mini_cheetah.xml'
+            urdf_filename = MujocoSim_quadruped_path + '/robot_model/mini_cheetah/mini_cheetah.urdf'
+            xml_filename = MujocoSim_quadruped_path + '/robot_model/mini_cheetah/mini_cheetah.xml'
 
         joint_list = [
             'FL_hip_joint',
@@ -180,15 +180,15 @@ class InverseKinematicsNumeric:
 
 if __name__ == "__main__":
     if cfg.robot == 'go2':
-        xml_filename = gym_quadruped_path + '/robot_model/go2/go2.xml'
+        xml_filename = MujocoSim_quadruped_path + '/robot_model/go2/go2.xml'
     if cfg.robot == 'go1':
-        xml_filename = gym_quadruped_path + '/robot_model/go1/go1.xml'
+        xml_filename = MujocoSim_quadruped_path + '/robot_model/go1/go1.xml'
     elif cfg.robot == 'aliengo':
-        xml_filename = gym_quadruped_path + '/robot_model/aliengo/aliengo.xml'
+        xml_filename = MujocoSim_quadruped_path + '/robot_model/aliengo/aliengo.xml'
     elif cfg.robot == 'hyqreal':
-        xml_filename = gym_quadruped_path + '/robot_model/hyqreal/hyqreal.xml'
+        xml_filename = MujocoSim_quadruped_path + '/robot_model/hyqreal/hyqreal.xml'
     elif cfg.robot == 'mini_cheetah':
-        xml_filename = gym_quadruped_path + '/robot_model/mini_cheetah/mini_cheetah.xml'
+        xml_filename = MujocoSim_quadruped_path + '/robot_model/mini_cheetah/mini_cheetah.xml'
 
     ik = InverseKinematicsNumeric()
 

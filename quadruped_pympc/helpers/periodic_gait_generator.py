@@ -1,7 +1,7 @@
 import copy
 
 import numpy as np
-from gym_quadruped.utils.quadruped_utils import LegsAttr
+from MujocoSim_quadruped.utils.quadruped_utils import LegsAttr
 from quadruped_pympc.helpers.quadruped_utils import GaitType
 
 

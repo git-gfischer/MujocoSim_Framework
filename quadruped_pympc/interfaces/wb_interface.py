@@ -2,7 +2,7 @@ import copy
 import time
 
 import numpy as np
-from gym_quadruped.utils.quadruped_utils import LegsAttr
+from MujocoSim_quadruped.utils.quadruped_utils import LegsAttr
 from scipy.spatial.transform import Rotation as R
 
 from quadruped_pympc import config as cfg
@@ -121,6 +121,7 @@ class WBInterface:
         ref_base_lin_vel: np.ndarray,
         ref_base_ang_vel: np.ndarray,
         mujoco_contact: np.ndarray = None,
+        ref_override: dict | None = None,
     ) -> [dict, dict, list, LegsAttr, list, list, float, bool]:
         """Update the state and reference for the whole body controller, including the contact sequence, footholds, and terrain estimation.
 
@@ -292,6 +293,13 @@ class WBInterface:
                 ref_orientation=np.array([terrain_roll, terrain_pitch, 0.0]),
                 ref_position=ref_pos,
             )
+
+            # Apply optional reference override from higher-level procedures (e.g. sniff pose)
+            if ref_override is not None:
+                if "ref_orientation" in ref_override:
+                    ref_state["ref_orientation"] = ref_override["ref_orientation"]
+                if "ref_position" in ref_override:
+                    ref_state["ref_position"] = ref_override["ref_position"]
 
         # -------------------------------------------------------------------------------------------------
 

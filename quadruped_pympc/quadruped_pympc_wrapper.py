@@ -1,5 +1,5 @@
 import numpy as np
-from gym_quadruped.utils.quadruped_utils import LegsAttr
+from MujocoSim_quadruped.utils.quadruped_utils import LegsAttr
 
 from quadruped_pympc import config as cfg
 from quadruped_pympc.interfaces.srbd_batched_controller_interface import SRBDBatchedControllerInterface
@@ -76,6 +76,7 @@ class QuadrupedPyMPC_Wrapper:
         tau: LegsAttr,
         inertia: np.ndarray,
         mujoco_contact: np.ndarray,
+        ref_override: dict | None = None,
     ) -> LegsAttr:
         """Given the current state of the robot (and the reference),
             compute the torques to be applied to the motors.
@@ -127,6 +128,7 @@ class QuadrupedPyMPC_Wrapper:
                 ref_base_lin_vel,
                 ref_base_ang_vel,
                 mujoco_contact,
+                ref_override=ref_override,
             )
         )
 

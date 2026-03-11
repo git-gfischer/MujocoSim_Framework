@@ -8,7 +8,7 @@ from quadruped_pympc.helpers.quadruped_utils import GaitType
 # These are the only attributes needed per quadruped, the rest can be computed automatically ----------------------
 robot = 'aliengo'  # 'aliengo', 'go1', 'go2', 'b2', 'hyqreal1', 'hyqreal2', 'mini_cheetah', 'spot'  # TODO: Load from robot_descriptions.py
 
-from gym_quadruped.robot_cfgs import RobotConfig, get_robot_config
+from MujocoSim_quadruped.robot_cfgs import RobotConfig, get_robot_config
 robot_cfg: RobotConfig = get_robot_config(robot_name=robot)
 robot_leg_joints = robot_cfg.leg_joints
 robot_feet_geom_names = robot_cfg.feet_geom_names

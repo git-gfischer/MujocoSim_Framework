@@ -13,9 +13,9 @@ import numpy as np
 import mujoco
 
 # Gym and Simulation related imports
-from gym_quadruped.quadruped_env import QuadrupedEnv
-from gym_quadruped.utils.mujoco.visual import render_sphere, render_vector
-from gym_quadruped.utils.quadruped_utils import LegsAttr
+from MujocoSim_quadruped.quadruped_env import QuadrupedEnv
+from MujocoSim_quadruped.utils.mujoco.visual import render_sphere, render_vector
+from MujocoSim_quadruped.utils.quadruped_utils import LegsAttr
 from tqdm import tqdm
 
 # Helper functions for plotting
@@ -60,7 +60,7 @@ def run_simulation(
         ref_base_ang_vel=ref_base_ang_vel,  # pass a float for a fixed value
         ground_friction_coeff=friction_coeff,  # pass a float for a fixed value
         base_vel_command_type=base_vel_command_type,  # "forward", "random", "forward+rotate", "human"
-        state_obs_names=tuple(state_obs_names),  # Desired quantities in the 'state' vec
+        state_obs_names=tuple(state_obs_names)  # Desired quantities in the 'state' vec
     )
     pprint(env.get_hyperparameters())
     env.mjModel.opt.gravity[2] = -qpympc_cfg.gravity_constant
@@ -94,7 +94,7 @@ def run_simulation(
 
     # Create HeightMap -----------------------------------------------------------------------
     if qpympc_cfg.simulation_params["visual_foothold_adaptation"] != "blind":
-        from gym_quadruped.sensors.heightmap import HeightMap
+        from MujocoSim_quadruped.sensors.heightmap import HeightMap
 
         resolution_heightmap = 0.04
         num_rows_heightmap = 7
@@ -140,7 +140,7 @@ def run_simulation(
 
     # Data recording -------------------------------------------------------------------------------------------
     if recording_path is not None:
-        from gym_quadruped.utils.data.h5py import H5Writer
+        from MujocoSim_quadruped.utils.data.h5py import H5Writer
 
         root_path = pathlib.Path(recording_path)
         root_path.mkdir(exist_ok=True)
