@@ -22,7 +22,10 @@ import mujoco
 from MujocoSim_quadruped.quadruped_env import QuadrupedEnv
 from MujocoSim_quadruped.utils.mujoco.visual import render_sphere, render_vector
 from MujocoSim_quadruped.utils.quadruped_utils import LegsAttr
+from MujocoSim_quadruped.sensors.imu import IMU
 from tqdm import tqdm
+
+from MujocoSim_quadruped.utils.supervised_dataset import DataField, FlexibleDatasetWriter
 
 from quadruped_pympc.helpers.quadruped_utils import plot_swing_mujoco
 from quadruped_pympc.quadruped_pympc_wrapper import QuadrupedPyMPC_Wrapper
@@ -52,6 +55,20 @@ def run_procedure_controller_simulation(
 
     state_obs_names = []
 
+    state_obs_names += tuple(IMU.ALL_OBS)
+
+    imu_kwargs = {
+        'accel_name': 'imu_acc',
+        'gyro_name': 'imu_gyro',
+        'imu_site_name': 'imu',
+        'accel_noise': 0.0,
+        'gyro_noise': 0.0,
+        'accel_bias_rate': 0.0,
+        'gyro_bias_rate': 0.0,
+    }
+    imu_acc = [0,0,0] #acceleration in m/s^2
+    imu_gyro = [0,0,0] #angular velocity in rad/s
+
     # Zero ref velocity: pass (0, 0) as (min, max) so the env uses fixed zero
     env = QuadrupedEnv(
         robot=robot_name,
@@ -61,7 +78,9 @@ def run_procedure_controller_simulation(
         ref_base_ang_vel=(0.0, 0.0),
         ground_friction_coeff=friction_coeff[1], # kinetic friction
         base_vel_command_type="human",
-        state_obs_names=tuple(state_obs_names)
+        state_obs_names=tuple(state_obs_names),
+        sensors=(IMU,),
+        sensors_kwargs=(imu_kwargs,),
     )
     pprint(env.get_hyperparameters())
     env.mjModel.opt.gravity[2] = -qpympc_cfg.gravity_constant
@@ -126,20 +145,6 @@ def run_procedure_controller_simulation(
         if hasattr(env.viewer, "user_key_callback"):
             env.viewer.user_key_callback = sim_controller.key_callback
 
-    if recording_path is not None:
-        from MujocoSim_quadruped.utils.data.h5py import H5Writer
-
-        root_path = pathlib.Path(recording_path)
-        root_path.mkdir(exist_ok=True)
-        dataset_path = (
-            root_path
-            / f"{robot_name}/{scene_name}"
-            / f"procedure_controller_steps={int(num_seconds // simulation_dt):d}.h5"
-        )
-        h5py_writer = H5Writer(file_path=dataset_path, env=env, extra_obs=None)
-        print(f"\nRecording data to: {dataset_path.absolute()}")
-    else:
-        h5py_writer = None
 
     RENDER_FREQ = 30  # Hz
     N_STEPS = int(num_seconds // simulation_dt)
@@ -149,6 +154,29 @@ def run_procedure_controller_simulation(
     scratch_active = False
     scratch_end_time = None
 
+    # Dataset setup
+    fields = [
+    DataField( name="joint_pos",  source="joints/position",        kind="feature",  extract="all",   dtype=np.float32, shape=(12,),),
+    DataField( name="joint_vel",  source="joints/velocity",        kind="feature",  extract="all",   dtype=np.float32, shape=(12,),),
+    DataField( name="torques",    source="joints/torques",         kind="feature",  extract="all",   dtype=np.float32, shape=(12,),),
+    DataField( name="gyro",       source="imu/gyro",               kind="feature",  extract="all",  dtype=np.float32, shape=(3,),),
+    DataField( name="acc",        source="imu/acceleration",       kind="feature",  extract="all",  dtype=np.float32, shape=(3,),),
+    DataField( name="foot_pos",   source="feet/position",          kind="feature",  extract="all",   dtype=np.float32, shape=(12,),),
+    DataField( name="foot_vel",   source="feet/velocity",          kind="feature",  extract="all",   dtype=np.float32, shape=(12,),),
+    DataField( name="contact_state", source="contact",             kind="label",    extract="value", dtype=np.int8,    shape=(4,),),
+    DataField( name="grf",           source="grf",                 kind="label",    extract="all", dtype=np.float32, shape=(12,),),
+    DataField( name="Trunk_Force",   source="trunk_force",         kind="label",    extract="value", dtype=np.float32, shape=(3,),)
+    #DataField( name="slip",          source="slip",                kind="label",    extract="value", dtype=np.int8,    shape=(4,),),
+]
+    writer = FlexibleDatasetWriter(
+                root_dir="./data",
+                fields=fields,
+                storage_format="pickle",   # "pickle", "numpy", or "h5"
+                flush_every=2000,
+                dataset_name="proprio_dataset",
+                strict=True,)
+
+    # Start the simulation
     ep_state_history, ep_ctrl_state_history, ep_time = [], [], []
     for _ in tqdm(range(N_STEPS), desc="Procedure controller steps:", total=N_STEPS):
         # File-based trigger: no stdin needed, works with MuJoCo single-threaded loop
@@ -188,6 +216,8 @@ def run_procedure_controller_simulation(
         base_pos = copy.deepcopy(env.base_pos)
         com_pos = copy.deepcopy(env.com)
 
+    
+
         ref_base_lin_vel, ref_base_ang_vel = env.target_base_vel()
         ref_base_lin_vel, ref_base_ang_vel = sim_controller.apply_ref_velocity_override(
             ref_base_lin_vel, ref_base_ang_vel
@@ -201,7 +231,8 @@ def run_procedure_controller_simulation(
         qpos, qvel = env.mjData.qpos, env.mjData.qvel
         legs_qvel_idx = env.legs_qvel_idx
         legs_qpos_idx = env.legs_qpos_idx
-        joints_pos = LegsAttr(FL=legs_qvel_idx.FL, FR=legs_qvel_idx.FR, RL=legs_qvel_idx.RL, RR=legs_qvel_idx.RR)
+        joints_pos = LegsAttr(FL=qpos[7:10], FR=qpos[10:13], RL=qpos[13:16], RR=qpos[16:19])
+        joints_vel = LegsAttr(FL=qvel[6:9], FR=qvel[9:12], RL=qvel[12:15], RR=qvel[15:18])
 
         legs_mass_matrix = env.legs_mass_matrix
         legs_qfrc_bias = env.legs_qfrc_bias
@@ -252,6 +283,14 @@ def run_procedure_controller_simulation(
 
         state, reward, is_terminated, is_truncated, info = env.step(action=action)
 
+        #update imu data-------------------------------
+        imu_acc = state['imu_acc'] # linear acceleration
+        imu_gyro = state['imu_gyro'] # angular velocity
+        #------------------------------------------------
+
+        # get base force from simulation
+        gt_base_force = np.array(env.mjData.qfrc_applied[0:3]) # base force in world frame
+
         ctrl_state = quadrupedpympc_wrapper.get_obs()
         base_poz_z_err = ctrl_state["ref_base_height"] - base_pos[2]
         ctrl_state["base_poz_z_err"] = base_poz_z_err
@@ -272,8 +311,32 @@ def run_procedure_controller_simulation(
             scratch_active = False
             scratch_end_time = None
 
+        # Append the observation to the dataset-----------------------------------------------------------------
+        tau_numpy = np.concatenate([tau.FL, tau.FR, tau.RL, tau.RR]) #convert tau to numpy array wihtout the FL, FR, RL, RR
+
+        _, _, feet_GRF = env.feet_contact_state(ground_reaction_forces=True) #get feet_GRF
+        feet_GRF_numpy = np.array([feet_GRF.FL, feet_GRF.FR, feet_GRF.RL, feet_GRF.RR]).flatten() 
+
+        ground_contact_state = env.feet_contact_state()[0]
+        contact_state_numpy = np.array([int(ground_contact_state.FL), int(ground_contact_state.FR), int(ground_contact_state.RL), int(ground_contact_state.RR)])
+
+        feet_pos_base_numpy = np.concatenate([feet_pos_base.FL, feet_pos_base.FR, feet_pos_base.RL, feet_pos_base.RR])
+        feet_vel_base_numpy = np.concatenate([feet_vel_base.FL, feet_vel_base.FR, feet_vel_base.RL, feet_vel_base.RR])
+
+        joint_pos_numpy = np.concatenate([joints_pos.FL,joints_pos.FR,joints_pos.RL,joints_pos.RR])
+        joint_vel_numpy = np.concatenate([joints_vel.FL,joints_vel.FL,joints_vel.RL,joints_vel.RR])
+
+        feature_data = {"joints": {"position": joint_pos_numpy, "velocity": joint_vel_numpy, "torques": tau_numpy} ,
+                        "imu": {"gyro": np.array(imu_gyro) , "acceleration": np.array(imu_acc)},
+                        "feet": {"position": feet_pos_base_numpy , "velocity": feet_vel_base_numpy},
+        }
+        label_data = {"contact": contact_state_numpy, "grf": feet_GRF_numpy, "trunk_force": gt_base_force}
+        writer.append(feature_data, label_data)  
+        #--------------------------------------------------------------------------------------------------------
+        
+
         if render and (time.time() - last_render_time > 1.0 / RENDER_FREQ or env.step_num == 1):
-            _, _, feet_GRF = env.feet_contact_state(ground_reaction_forces=True)
+            #_, _, feet_GRF = env.feet_contact_state(ground_reaction_forces=True)
 
             feet_traj_geom_ids = plot_swing_mujoco(
                 viewer=env.viewer,
@@ -316,6 +379,8 @@ def run_procedure_controller_simulation(
                     geom_id=feet_GRF_geom_ids[leg_name],
                 )
 
+              
+
             env.render()
             last_render_time = time.time()
 
@@ -324,14 +389,10 @@ def run_procedure_controller_simulation(
             break
 
     env.close()
-    if h5py_writer is not None:
-        ep_obs_history = collate_obs(ep_state_history)
-        ep_traj_time = np.asarray(ep_time)[:, np.newaxis]
-        h5py_writer.append_trajectory(state_obs_traj=ep_obs_history, time=ep_traj_time)
-        return h5py_writer.file_path
+    writer.close()
+  
 
-
-def collate_obs(list_of_dicts) -> dict[str, np.ndarray]:
+def collate_obs(list_of_dicts) -> dict[str, np.ndarray]: # not used
     if not list_of_dicts:
         raise ValueError("Input list is empty.")
     keys = list_of_dicts[0].keys()
