@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from quadruped_pympc import config as cfg
 from quadruped_pympc.helpers.custom_procedures.gait_patch import install_gait_patch
 from quadruped_pympc.helpers.custom_procedures.scratch_patch import (
     clear_scratch,
@@ -43,6 +44,36 @@ class MovementProcedures:
         self._current_procedure: str | None = None
         self._single_leg_name: str | None = None
         self._ref_override: dict | None = None
+        # Used to restore gait parameters (step frequency, duty factor, swing period)
+        # when clearing procedures.
+        self._default_gait_name = cfg.simulation_params["gait"]
+
+    def _apply_gait(self, gait_name: str) -> None:
+        """
+        Apply gait_type and gait parameters consistently across:
+        - PeriodicGaitGenerator (contact pattern)
+        - FootholdReferenceGenerator (stance_time usage)
+        - SwingTrajectoryController (swing_period)
+        """
+        gait_params = cfg.simulation_params["gait_params"][gait_name]
+        pgg = self.wb_interface.pgg
+
+        pgg.gait_type = gait_params["type"]
+        pgg.duty_factor = gait_params["duty_factor"]
+        pgg.step_freq = gait_params["step_freq"]
+        pgg.reset()
+
+        # If single-leg swing patch was installed previously, disable it explicitly.
+        if hasattr(pgg, "single_leg_swing_leg_id"):
+            pgg.single_leg_swing_leg_id = None
+
+        # Update stance/swing timing dependent generators.
+        self.wb_interface.frg.stance_time = (1.0 / pgg.step_freq) * pgg.duty_factor
+        swing_period = (1.0 - pgg.duty_factor) * (1.0 / pgg.step_freq)
+        self.wb_interface.stc.regenerate_swing_trajectory_generator(
+            step_height=self.wb_interface.step_height,
+            swing_period=float(swing_period),
+        )
 
     @property
     def current_procedure(self) -> str | None:
@@ -52,6 +83,19 @@ class MovementProcedures:
         """Make the robot static: all legs in contact, zero reference velocity."""
         self.wb_interface.pgg.set_full_stance()
         self._current_procedure = "static_hold"
+        self._single_leg_name = None
+        self._ref_override = None
+
+    def trot(self) -> None:
+        """Full robot trot: apply trot gait parameters and allow reference velocities."""
+        # Disable any procedure-specific trajectory patches.
+        if getattr(self.wb_interface.stc, "_scratch_patch_installed", False):
+            clear_scratch(self.wb_interface.stc)
+        if getattr(self.wb_interface.stc, "_trot_random_patch_installed", False):
+            clear_trot_random(self.wb_interface.stc)
+
+        self._apply_gait("trot")
+        self._current_procedure = "trot"
         self._single_leg_name = None
         self._ref_override = None
 
@@ -102,14 +146,20 @@ class MovementProcedures:
     def clear_procedure(self) -> None:
         """Clear the current procedure and restore the default gait."""
         pgg = self.wb_interface.pgg
+
+        # Disable procedure-specific trajectory patches.
         if getattr(self.wb_interface.stc, "_scratch_patch_installed", False):
             clear_scratch(self.wb_interface.stc)
         if getattr(self.wb_interface.stc, "_trot_random_patch_installed", False):
             clear_trot_random(self.wb_interface.stc)
+
+        # Restore the full default gait timing and contact pattern.
+        self._apply_gait(self._default_gait_name)
+
+        # If single-leg swing was active, make sure it is fully cleared.
         if getattr(pgg, "_custom_procedures_patched", False) and getattr(pgg, "single_leg_swing_leg_id", None) is not None:
             pgg.clear_single_leg_swing()
-        else:
-            pgg.restore_previous_gait()
+
         self._current_procedure = None
         self._single_leg_name = None
         self._ref_override = None
@@ -129,4 +179,7 @@ class MovementProcedures:
             return True, (0.0, 0.0, 0.0), zero_ang
         if self._current_procedure == "sniff":
             return True, (0.0, 0.0, 0.0), zero_ang
+        if self._current_procedure == "trot":
+            # Do not override reference velocities: trot is the "normal walking" procedure.
+            return False, (0.0, 0.0, 0.0), zero_ang
         return False, (0.0, 0.0, 0.0), zero_ang

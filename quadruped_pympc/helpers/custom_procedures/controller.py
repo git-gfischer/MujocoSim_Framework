@@ -15,14 +15,15 @@ SCRATCH_KEYS = {"r": "FL", "t": "FR", "y": "RL", "u": "RR"}  # R/T/Y/U = scratch
 STATIC_HOLD_KEYS = ("s", "0")  # S = stance
 SNIFF_KEY = "n"  # N = head down (sniff)
 CLEAR_KEYS = ("c", "5", "e", "escape")
+TROT_KEY = "p"  # P = full robot trot
 
 
 class SimulationController:
     """
     Controller that switches between normal walking and movement procedures
-    (static hold, single-leg trot) via keyboard.
+    (static hold, single-leg trot, full trot) via keyboard.
 
-    Keys: S = static hold | F/G/H/J = single-leg trot | R/T/Y/U = scratch | N = sniff | C = clear.
+    Keys: S = static hold | F/G/H/J = single-leg trot | R/T/Y/U = scratch | N = sniff | P = trot | C = clear.
     """
 
     def __init__(self, movement_procedures: MovementProcedures):
@@ -47,6 +48,9 @@ class SimulationController:
         elif key == SNIFF_KEY:
             self.movement_procedures.sniff()
             print("[Controller] Procedure: sniff (head down)")
+        elif key == TROT_KEY:
+            self.movement_procedures.trot()
+            print("[Controller] Procedure: trot (full gait)")
         elif key in CLEAR_KEYS:
             self.movement_procedures.clear_procedure()
             print("[Controller] Procedure cleared (normal gait)")
@@ -87,4 +91,4 @@ class SimulationController:
 
     @staticmethod
     def print_help() -> None:
-        print("Controller keys:  S = stance | F/G/H/J = single-leg trot | R/T/Y/U = scratch | N = sniff | C = clear")
+        print("Controller keys:  S = stance | F/G/H/J = single-leg trot | R/T/Y/U = scratch | N = sniff | P = trot | C = clear")

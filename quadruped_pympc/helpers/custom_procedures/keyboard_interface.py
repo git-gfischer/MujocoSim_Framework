@@ -27,12 +27,13 @@ LEGEND = """
   │  Y         →  Scratch floor: RL                         │
   │  U         →  Scratch floor: RR                         │
   │  N         →  Sniff (head down, like a dog)             │
+  │  P         →  Full robot trot (normal trot gait)      │
   │  C , 5, E  →  Clear procedure (normal gait)             │
   │  Q         →  Quit this interface                        │
   └─────────────────────────────────────────────────────────┘
 """
 
-VALID_KEYS = frozenset("s0fgjhjrtyuc5enq")  # r/t/y/u = scratch, n = sniff
+VALID_KEYS = frozenset("s0fgjhjrtyuc5enqp")  # r/t/y/u = scratch, n = sniff, p = trot
 
 
 def send_key(key: str) -> bool:
@@ -55,7 +56,7 @@ def run_interface() -> None:
 
     while True:
         try:
-            line = input("Key [S/F/G/H/J/R/T/Y/U/N/C/Q]: ").strip().lower()
+            line = input("Key [S/F/G/H/J/R/T/Y/U/N/P/C/Q]: ").strip().lower()
         except (EOFError, KeyboardInterrupt):
             print("\nBye.")
             break
@@ -66,7 +67,7 @@ def run_interface() -> None:
             print("Quit.")
             break
         if key not in VALID_KEYS:
-            print("  Unknown key. Use S F G H J R T Y U N C 0 5 E or Q to quit.")
+            print("  Unknown key. Use S F G H J R T Y U N P C 0 5 E or Q to quit.")
             continue
         if send_key(key):
             action = {
@@ -81,6 +82,7 @@ def run_interface() -> None:
                 "y": "Scratch RL",
                 "u": "Scratch RR",
                 "n": "Sniff (head down)",
+                "p": "Full robot trot",
                 "c": "Clear procedure",
                 "5": "Clear procedure",
                 "e": "Clear procedure",

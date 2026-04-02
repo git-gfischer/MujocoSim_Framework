@@ -70,6 +70,7 @@ def run_simulation( qpympc_cfg,
                     friction_coeff=(1.0, 1.0), # (static, kinetic)
                     learning_iteration=0, 
                     render=True, 
+                    start_with_trot: bool = False,
                     proprioceptive_config="", 
                     proprioceptive_inference="",
                     ):
@@ -212,9 +213,13 @@ def run_simulation( qpympc_cfg,
     movement_procedures = MovementProcedures(quadrupedpympc_wrapper.wb_interface)
     sim_controller = SimulationController(movement_procedures)
 
-    # Start in stance (static hold)
-    movement_procedures.static_hold()
-    print("Procedure controller (PI sim): robot started in STANCE (static hold).")
+    # Start either in stance or in full trot.
+    if start_with_trot:
+        movement_procedures.trot()
+        print("Procedure controller (PI sim): robot started in TROT (full gait).")
+    else:
+        movement_procedures.static_hold()
+        print("Procedure controller (PI sim): robot started in STANCE (static hold).")
     SimulationController.print_help()
     print(f"To trigger: echo <key> > {PROCEDURE_KEY_FILE}")
 
